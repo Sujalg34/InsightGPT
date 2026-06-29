@@ -1,5 +1,8 @@
 import os
 import streamlit as st
+from utils.chunking import chunk_text
+from utils.embeddings import generate_embeddings
+from utils.vector_store import store_embeddings
 
 from config import (
     PAGE_TITLE,
@@ -75,6 +78,19 @@ if uploaded_pdf is not None:
         )
 
         text, metadata = extract_text(file_path)
+
+        chunks = chunk_text(text)
+
+        embeddings = generate_embeddings(chunks)
+
+        store_embeddings(   
+            chunks,
+            embeddings
+        )
+
+        st.success(
+            f"Stored {len(chunks)} chunks inside ChromaDB."
+        )
 
         st.session_state.document_text = text
         st.session_state.document_metadata = metadata
