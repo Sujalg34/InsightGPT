@@ -1,0 +1,16 @@
+streamlit
+google-genai
+chromadb
+PyMuPDF
+python-dotenv
+spacy
+langchain
+langchain-google-genai
+langchain-community
+sentence-transformers
+pandas
+numpy
+scikit-learn
+keybert
+networkx
+pyvis
