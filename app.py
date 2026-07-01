@@ -1,8 +1,6 @@
 import os
 import streamlit as st
-from utils.chunking import chunk_text
-from utils.embeddings import generate_embeddings
-from utils.vector_store import store_embeddings
+from utils.summarizer import summarize_document
 
 from config import (
     PAGE_TITLE,
@@ -14,10 +12,22 @@ from config import (
 
 from utils.parser import (
     save_uploaded_file,
-    extract_text
+    extract_document
 )
 
-# Page Configuration
+from utils.chunking import (
+    create_chunks
+)
+
+from utils.embeddings import (
+    generate_embeddings
+)
+
+from utils.vector_store import (
+    store_chunks
+)
+
+# PAGE CONFIG
 
 st.set_page_config(
     page_title=PAGE_TITLE,
@@ -25,15 +35,18 @@ st.set_page_config(
     layout=LAYOUT
 )
 
-# Initialize Session State
+# SESSION STATE
 
-if "document_text" not in st.session_state:
-    st.session_state.document_text = ""
+if "document" not in st.session_state:
+    st.session_state.document = None
 
-if "document_metadata" not in st.session_state:
-    st.session_state.document_metadata = {}
+if "chunks" not in st.session_state:
+    st.session_state.chunks = []
 
-# Sidebar
+if "embeddings_created" not in st.session_state:
+    st.session_state.embeddings_created = False
+
+# SIDEBAR
 
 with st.sidebar:
 
@@ -42,33 +55,31 @@ with st.sidebar:
     st.markdown("---")
 
     uploaded_pdf = st.file_uploader(
-        "📂 Upload Document",
+        "📂 Upload PDF",
         type=SUPPORTED_FILE_TYPES
     )
 
     st.markdown("---")
 
-    st.subheader("🚀 Features")
+    st.subheader("🚀 AI Features")
 
     st.markdown("""
-    - 📄 Document Intelligence
-    - 🤖 RAG Question Answering
-    - 📝 AI Summarization
-    - 🔍 Semantic Search
-    - 📊 Document Classification
-    - 📑 Document Comparison
-    - 🏢 Named Entity Recognition
-    """)
+- 📄 Document Intelligence
+- 💬 RAG Question Answering
+- 📝 AI Summarization
+- 🔍 Semantic Search
+- 📊 Document Classification
+- 📑 Compare Documents
+- 🏢 Named Entity Recognition
+""")
 
     st.markdown("---")
 
-    st.caption("Built using Gemini + ChromaDB")
+    st.caption("Powered by Gemini + ChromaDB")
 
-# Upload Processing
+# DOCUMENT PROCESSING PIPELINE
 
 if uploaded_pdf is not None:
-
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
     with st.spinner("Processing document..."):
 
@@ -77,82 +88,136 @@ if uploaded_pdf is not None:
             UPLOAD_FOLDER
         )
 
-        text, metadata = extract_text(file_path)
+        document = extract_document(file_path)
 
-        chunks = chunk_text(text)
+        chunks = create_chunks(document)
 
         embeddings = generate_embeddings(chunks)
 
-        store_embeddings(   
+        store_chunks(
             chunks,
             embeddings
         )
 
-        st.success(
-            f"Stored {len(chunks)} chunks inside ChromaDB."
-        )
+        st.session_state.document = document
+        st.session_state.chunks = chunks
+        st.session_state.embeddings_created = True
 
-        st.session_state.document_text = text
-        st.session_state.document_metadata = metadata
+    st.success("✅ Document Processed Successfully")
 
-    st.success("✅ Document uploaded successfully!")
-
-# Main Dashboard
+# MAIN DASHBOARD
 
 st.title("🧠 InsightGPT")
 
-st.caption("AI-Powered Document Intelligence Platform")
+st.caption(
+    "Enterprise AI Document Intelligence Platform"
+)
 
 st.markdown("---")
 
-# Display Metadata
+# DOCUMENT METADATA
 
-if st.session_state.document_metadata:
+if st.session_state.document is not None:
 
-    metadata = st.session_state.document_metadata
+    document = st.session_state.document
 
     st.subheader("📊 Document Statistics")
 
-    col1, col2, col3, col4 = st.columns(4)
+    c1, c2, c3, c4 = st.columns(4)
 
-    col1.metric("📄 Pages", metadata["pages"])
-    col2.metric("📝 Words", metadata["words"])
-    col3.metric("🔤 Characters", metadata["characters"])
-    col4.metric("📁 File", metadata["file_name"])
+    c1.metric(
+        "Pages",
+        document["total_pages"]
+    )
+
+    c2.metric(
+        "Words",
+        document["total_words"]
+    )
+
+    c3.metric(
+        "Characters",
+        document["total_characters"]
+    )
+
+    c4.metric(
+        "Chunks",
+        len(st.session_state.chunks)
+    )
+
+    st.success("✅ Embeddings Generated")
 
     st.markdown("---")
-# AI Modules Layout
+
+# AI MODULES
 
 left, right = st.columns([2, 1])
 
+# RAG CHAT
+
 with left:
 
-    st.subheader("💬 Ask Questions")
+    st.subheader("💬 Ask InsightGPT")
 
     question = st.text_input(
         "Ask anything about your document..."
     )
 
-    if st.button("🤖 Ask AI"):
+    if st.button("🚀 Ask AI"):
 
-        if st.session_state.document_text == "":
+        if st.session_state.document is None:
             st.warning("Please upload a document first.")
+
         else:
-            st.info("RAG module will be integrated in the next milestone.")
+            st.info(
+                "RAG Engine will be integrated in Milestone 5."
+            )
+
+# AI SUMMARY
 
 with right:
 
     st.subheader("📝 AI Summary")
 
-    if st.button("Generate Summary"):
+    if "summary" not in st.session_state:
+        st.session_state.summary = ""
 
-        if st.session_state.document_text == "":
-            st.warning("Please upload a document first.")
+    if st.button(
+        "Generate Summary",
+        use_container_width=True
+    ):
+
+        if not st.session_state.document_uploaded:
+
+            st.warning(
+                "Please upload a document first."
+            )
+
         else:
-            st.info("Summarization module coming soon.")
 
-st.markdown("---")
+            with st.spinner(
+                "Generating AI Summary..."
+            ):
 
+                st.session_state.summary = summarize_document(
+                    st.session_state.document
+                )
+
+    if st.session_state.summary:
+
+        st.success("✅ Summary Generated Successfully")
+
+        st.markdown(st.session_state.summary)
+
+        st.download_button(
+            label="📥 Download Summary",
+            data=st.session_state.summary,
+            file_name="InsightGPT_Summary.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+
+# INSIGHTS
 col1, col2 = st.columns(2)
 
 with col1:
@@ -161,45 +226,94 @@ with col1:
 
     if st.button("Extract Insights"):
 
-        if st.session_state.document_text == "":
-            st.warning("Please upload a document first.")
+        if st.session_state.document is None:
+
+            st.warning(
+                "Please upload a document first."
+            )
+
         else:
-            st.info("NER module coming soon.")
+
+            st.info(
+                "NER module coming soon."
+            )
 
 with col2:
 
-    st.subheader("📂 Document Classification")
+    st.subheader("📂 Classification")
 
     if st.button("Classify Document"):
 
-        if st.session_state.document_text == "":
-            st.warning("Please upload a document first.")
+        if st.session_state.document is None:
+
+            st.warning(
+                "Please upload a document first."
+            )
+
         else:
-            st.info("Classification module coming soon.")
+
+            st.info(
+                "Classification module coming soon."
+            )
 
 st.markdown("---")
+
+# DOCUMENT COMPARISON
 
 st.subheader("📑 Compare Documents")
 
 compare_pdf = st.file_uploader(
+
     "Upload Second PDF",
+
     type=SUPPORTED_FILE_TYPES,
+
     key="compare_pdf"
+
 )
 
 if st.button("Compare Documents"):
 
     if compare_pdf is None:
-        st.warning("Please upload the second document.")
+
+        st.warning(
+            "Please upload another document."
+        )
+
     else:
-        st.info("Comparison module coming soon.")
+
+        st.info(
+            "Comparison module will be added later."
+        )
 
 st.markdown("---")
 
-# Text Preview
+# DOCUMENT OVERVIEW
 
-if st.session_state.document_text:
+if st.session_state.document is not None:
 
-    with st.expander("📖 Preview Extracted Text"):
+    st.subheader("📖 Document Preview")
 
-        st.text(st.session_state.document_text[:5000])
+    preview_text = ""
+
+    for page in st.session_state.document["pages"][:3]:
+
+        preview_text += page["text"] + "\n\n"
+
+    st.text_area(
+
+        "Preview",
+
+        preview_text[:5000],
+
+        height=350
+
+    )
+
+# FOOTER
+
+st.markdown("---")
+
+st.caption(
+    "InsightGPT • AI Powered Document Intelligence Platform"
+)

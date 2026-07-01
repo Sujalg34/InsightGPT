@@ -1,27 +1,49 @@
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
-def chunk_text(
-    text,
+splitter = RecursiveCharacterTextSplitter(
+
     chunk_size=800,
-    chunk_overlap=150
-):
 
-    splitter = RecursiveCharacterTextSplitter(
+    chunk_overlap=150,
 
-        chunk_size=chunk_size,
+    separators=[
+        "\n\n",
+        "\n",
+        ". ",
+        " ",
+        ""
+    ]
+)
 
-        chunk_overlap=chunk_overlap,
 
-        separators=[
-            "\n\n",
-            "\n",
-            ". ",
-            " ",
-            ""
-        ]
-    )
+def create_chunks(document):
+    """
+    Create chunks while preserving page numbers.
+    """
 
-    chunks = splitter.split_text(text)
+    chunks = []
+
+    chunk_id = 0
+
+    for page in document["pages"]:
+
+        split_text = splitter.split_text(page["text"])
+
+        for text in split_text:
+
+            chunks.append({
+
+                "chunk_id": chunk_id,
+
+                "page_number": page["page_number"],
+
+                "document_name": document["file_name"],
+
+                "text": text
+
+            })
+
+            chunk_id += 1
 
     return chunks

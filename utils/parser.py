@@ -1,7 +1,13 @@
 import fitz
 import os
 
+
 def save_uploaded_file(uploaded_file, upload_folder):
+    """
+    Save uploaded PDF locally.
+    """
+
+    os.makedirs(upload_folder, exist_ok=True)
 
     file_path = os.path.join(upload_folder, uploaded_file.name)
 
@@ -11,23 +17,40 @@ def save_uploaded_file(uploaded_file, upload_folder):
     return file_path
 
 
-def extract_text(file_path):
+def extract_document(file_path):
+    """
+    Extract text page by page and build a document object.
+    """
 
-    doc = fitz.open(file_path)
+    pdf = fitz.open(file_path)
 
-    full_text = ""
+    pages = []
 
-    metadata = {
-        "pages": len(doc),
-        "file_name": os.path.basename(file_path)
+    total_text = ""
+
+    for page_number, page in enumerate(pdf):
+
+        text = page.get_text("text")
+
+        pages.append({
+            "page_number": page_number + 1,
+            "text": text
+        })
+
+        total_text += text
+
+    document = {
+
+        "file_name": os.path.basename(file_path),
+
+        "total_pages": len(pdf),
+
+        "total_words": len(total_text.split()),
+
+        "total_characters": len(total_text),
+
+        "pages": pages
+
     }
 
-    for page in doc:
-
-        full_text += page.get_text()
-
-    metadata["characters"] = len(full_text)
-
-    metadata["words"] = len(full_text.split())
-
-    return full_text, metadata
+    return document
