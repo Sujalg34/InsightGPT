@@ -38,6 +38,17 @@ from utils.classifier import (
     classify_document
 )
 
+from utils.ner import (
+    extract_entities
+)
+
+from utils.comparision import (
+    compare_documents
+)
+
+from utils.search import (
+    semantic_search
+)
 # ==========================================================
 # PAGE CONFIGURATION
 # ==========================================================
@@ -72,6 +83,15 @@ if "rag_answer" not in st.session_state:
 
 if "rag_sources" not in st.session_state:
     st.session_state.rag_sources = []
+
+if "entities" not in st.session_state:
+    st.session_state.entities = ""
+
+if "comparison_result" not in st.session_state:
+    st.session_state.comparison_result = ""
+    
+if "semantic_results" not in st.session_state:
+    st.session_state.semantic_results = []
 
 # ==========================================================
 # SIDEBAR
@@ -348,9 +368,31 @@ with col1:
 
         else:
 
-            st.info(
-                "Named Entity Recognition module will be added in the next feature."
-            )
+            with st.spinner(
+                "Extracting entities..."
+            ):
+
+                st.session_state.entities = extract_entities(
+                    st.session_state.document
+                )
+
+    if st.session_state.entities:
+
+        st.success(
+            "✅ AI Insights Generated"
+        )
+
+        st.markdown(
+            st.session_state.entities
+        )
+
+        st.download_button(
+            label="📥 Download Insights",
+            data=st.session_state.entities,
+            file_name="InsightGPT_Insights.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
 
 # ==========================================================
 # DOCUMENT CLASSIFICATION
@@ -405,7 +447,7 @@ st.markdown("---")
 # DOCUMENT COMPARISON
 # ==========================================================
 
-st.subheader("📑 Compare Documents")
+st.subheader("📑 AI Document Comparison")
 
 compare_pdf = st.file_uploader(
     "Upload Second PDF",
@@ -418,19 +460,128 @@ if st.button(
     use_container_width=True
 ):
 
-    if compare_pdf is None:
+    if not st.session_state.document_uploaded:
 
         st.warning(
-            "Please upload a second document."
+            "Please upload the first document."
+        )
+
+    elif compare_pdf is None:
+
+        st.warning(
+            "Please upload the second document."
         )
 
     else:
 
-        st.info(
-            "AI Document Comparison will be implemented in the next feature."
-        )
+        with st.spinner(
+            "Processing second document..."
+        ):
+
+            second_file_path = save_uploaded_file(
+                compare_pdf,
+                UPLOAD_FOLDER
+            )
+
+            second_document = extract_document(
+                second_file_path
+            )
+
+        with st.spinner(
+            "Comparing documents using Gemini..."
+        ):
+
+            st.session_state.comparison_result = compare_documents(
+                st.session_state.document,
+                second_document
+            )
+
+if st.session_state.comparison_result:
+
+    st.success(
+        "✅ Comparison Completed"
+    )
+
+    st.markdown(
+        st.session_state.comparison_result
+    )
+
+    st.download_button(
+        label="📥 Download Comparison Report",
+        data=st.session_state.comparison_result,
+        file_name="InsightGPT_Comparison.txt",
+        mime="text/plain",
+        use_container_width=True
+    )
+
+# ==========================================================
+# SEMANTIC SEARCH
+# ==========================================================
 
 st.markdown("---")
+
+st.subheader("🔍 Semantic Search")
+
+search_query = st.text_input(
+    "Search by meaning instead of keywords..."
+)
+
+if st.button(
+    "Search Document",
+    use_container_width=True
+):
+
+    if not st.session_state.document_uploaded:
+
+        st.warning(
+            "Please upload a document first."
+        )
+
+    elif search_query.strip() == "":
+
+        st.warning(
+            "Please enter a search query."
+        )
+
+    else:
+
+        with st.spinner(
+            "Searching document..."
+        ):
+
+            st.session_state.semantic_results = semantic_search(
+                search_query,
+                top_k=5
+            )
+
+if st.session_state.semantic_results:
+
+    st.success(
+        f"Found {len(st.session_state.semantic_results)} relevant chunks"
+    )
+
+    for index, result in enumerate(
+        st.session_state.semantic_results,
+        start=1
+    ):
+
+        with st.expander(
+            f"Result {index} • Page {result['page']} • Similarity {result['similarity']}%"
+        ):
+
+            st.markdown(
+                f"**Document:** {result['document']}"
+            )
+
+            st.markdown(
+                f"**Similarity Score:** {result['similarity']}%"
+            )
+
+            st.markdown("---")
+
+            st.write(
+                result["chunk"]
+            )
 
 # ==========================================================
 # DOCUMENT PREVIEW
