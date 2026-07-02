@@ -49,6 +49,11 @@ from utils.comparision import (
 from utils.search import (
     semantic_search
 )
+
+from utils.vector_store import (
+    delete_collection
+)
+
 # ==========================================================
 # PAGE CONFIGURATION
 # ==========================================================
@@ -101,6 +106,10 @@ with st.sidebar:
 
     st.title("🧠 InsightGPT")
 
+    st.caption(
+        "Enterprise AI Document Intelligence Platform"
+    )
+
     st.markdown("---")
 
     uploaded_pdf = st.file_uploader(
@@ -110,26 +119,82 @@ with st.sidebar:
 
     st.markdown("---")
 
-    st.subheader("🚀 AI Modules")
+    st.subheader("🚀 AI Features")
+
+    st.success("✅ RAG Question Answering")
+    st.success("✅ AI Summarization")
+    st.success("✅ Document Classification")
+    st.success("✅ Named Entity Recognition")
+    st.success("✅ Document Comparison")
+    st.success("✅ Semantic Search")
+
+    st.markdown("---")
+
+    st.subheader("📊 Current Status")
+
+    if st.session_state.document_uploaded:
+
+        st.success("Document Indexed")
+
+        st.metric(
+            "Chunks",
+            len(st.session_state.chunks)
+        )
+
+    else:
+
+        st.warning("No Document Uploaded")
+
+    st.markdown("---")
+
+    st.subheader("⚙️ Project")
 
     st.markdown("""
-✅ RAG Question Answering
+**Model**
+- Gemini 2.5 Flash
 
-✅ AI Summarization
+**Embeddings**
+- BAAI/bge-small-en-v1.5
 
-✅ Document Classification
+**Vector Database**
+- ChromaDB
 
-🚧 Named Entity Recognition
-
-🚧 Document Comparison
-
-🚧 Semantic Search
+**Framework**
+- Streamlit
 """)
 
     st.markdown("---")
 
+st.subheader("🛠 Maintenance")
+
+if st.button(
+    "🗑 Clear Database",
+    use_container_width=True
+):
+
+    delete_collection()
+
+    st.success(
+        "Vector database cleared."
+    )
+
+if st.button(
+    "🔄 Reset Session",
+    use_container_width=True
+):
+
+    keys = list(st.session_state.keys())
+
+    for key in keys:
+
+        del st.session_state[key]
+
+    st.rerun()
+
+    st.markdown("---")
+
     st.caption(
-        "Powered by Gemini 2.5 Flash + ChromaDB"
+        "Version 1.0"
     )
 
 # ==========================================================
@@ -176,8 +241,14 @@ if uploaded_pdf is not None:
 
 st.title("🧠 InsightGPT")
 
-st.caption(
-    "Enterprise AI Document Intelligence Platform"
+st.markdown(
+    """
+### Enterprise AI Document Intelligence Platform
+
+Analyze documents using **Large Language Models**, **Retrieval-Augmented Generation (RAG)**, **Semantic Search**, and **Generative AI**.
+
+Upload a PDF to begin.
+"""
 )
 
 st.markdown("---")
@@ -192,26 +263,31 @@ if st.session_state.document_uploaded:
 
     st.subheader("📊 Document Statistics")
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5 = st.columns(4)
 
     c1.metric(
-        "Pages",
-        document["total_pages"]
+    "📄 Pages",
+    document["total_pages"]
     )
 
     c2.metric(
-        "Words",
+        "📝 Words",
         document["total_words"]
     )
 
     c3.metric(
-        "Characters",
+        "🔤 Characters",
         document["total_characters"]
     )
 
     c4.metric(
-        "Chunks",
+        "🧩 Chunks",
         len(st.session_state.chunks)
+    )
+
+    c5.metric(
+        "🤖 AI Modules",
+        "6"
     )
 
     st.success(
@@ -584,59 +660,123 @@ if st.session_state.semantic_results:
             )
 
 # ==========================================================
+# EXPORT CENTER
+# ==========================================================
+
+st.markdown("---")
+
+st.subheader("📤 Export AI Results")
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    if st.session_state.get("summary", ""):
+
+        st.download_button(
+            label="📥 Summary",
+            data=st.session_state.summary,
+            file_name="InsightGPT_Summary.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+
+    if st.session_state.get("classification_result", ""):
+
+        st.download_button(
+            label="📥 Classification",
+            data=st.session_state.classification_result,
+            file_name="InsightGPT_Classification.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+
+with col2:
+
+    if st.session_state.get("entities", ""):
+
+        st.download_button(
+            label="📥 AI Insights",
+            data=st.session_state.entities,
+            file_name="InsightGPT_Insights.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+
+    if st.session_state.get("comparison_result", ""):
+
+        st.download_button(
+            label="📥 Comparison",
+            data=st.session_state.comparison_result,
+            file_name="InsightGPT_Comparison.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+
+# ==========================================================
 # DOCUMENT PREVIEW
 # ==========================================================
 
 if st.session_state.document_uploaded:
 
+    st.markdown("---")
+
     st.subheader("📖 Document Preview")
 
-    preview_text = ""
+    preview = ""
 
     for page in st.session_state.document["pages"]:
 
-        preview_text += page["text"] + "\n\n"
+        preview += page["text"] + "\n\n"
 
-        if len(preview_text) >= 5000:
+        if len(preview) >= 5000:
             break
 
     st.text_area(
         "Extracted Text",
-        preview_text[:5000],
+        preview[:5000],
         height=350
     )
 
-    with st.expander("📋 Chunk Information"):
+    with st.expander("📋 Document Information"):
 
-        st.metric(
-            "Total Chunks",
-            len(st.session_state.chunks)
+        st.write(
+            f"**Document:** {st.session_state.document['file_name']}"
         )
 
-        if len(st.session_state.chunks) > 0:
+        st.write(
+            f"**Pages:** {st.session_state.document['total_pages']}"
+        )
 
-            first_chunk = st.session_state.chunks[0]
+        st.write(
+            f"**Chunks:** {len(st.session_state.chunks)}"
+        )
 
-            st.markdown("### First Chunk")
-
-            st.code(
-                first_chunk["text"][:700]
-            )
-
-            st.markdown("### Metadata")
-
-            st.json({
-                "Chunk ID": first_chunk["chunk_id"],
-                "Page": first_chunk["page_number"],
-                "Document": first_chunk["document_name"]
-            })
-
-st.markdown("---")
+        st.write(
+            f"**Words:** {st.session_state.document['total_words']}"
+        )
 
 # ==========================================================
 # FOOTER
 # ==========================================================
 
-st.caption(
-    "🧠 InsightGPT • Enterprise AI Document Intelligence Platform"
+st.markdown("---")
+
+st.markdown(
+"""
+<div style="text-align:center">
+
+### 🧠 InsightGPT
+
+Enterprise AI Document Intelligence Platform
+
+Built using
+
+**Streamlit • Gemini 2.5 Flash • ChromaDB • Sentence Transformers • Python**
+
+Version 1.0
+
+</div>
+""",
+unsafe_allow_html=True
 )

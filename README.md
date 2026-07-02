@@ -1,32 +1,68 @@
-# 📄 InsightGPT
+# 🧠 InsightGPT
 
-An AI-powered Document Intelligence Platform built using Python, Gemini, ChromaDB, and Retrieval-Augmented Generation (RAG).
+An AI-powered Document Intelligence Platform that enables users to upload PDF documents and interact with them using Large Language Models (LLMs).
 
 ## 🚀 Features
 
-- 📄 Intelligent PDF Processing
-- 🤖 RAG-based Question Answering
-- 📝 AI Document Summarization
-- 📊 Document Classification
+- 📄 PDF Document Upload & Parsing
+- 🧩 Intelligent Text Chunking
 - 🔍 Semantic Search
-- 📑 Document Comparison
-- 🏢 Named Entity Recognition
-- 📌 Source Citation
+- 💬 RAG-based Question Answering
+- 📝 AI Document Summarization
+- 📂 AI Document Classification
+- 🏢 Named Entity Recognition (NER)
+- 📑 AI Document Comparison
+- 📤 Export AI Results
+- 📊 Document Statistics Dashboard
 
-## 🛠️ Tech Stack
+## 🛠 Tech Stack
 
 - Python
 - Streamlit
-- Gemini 2.5 Flash
+- Google Gemini 2.5 Flash
 - ChromaDB
-- PyMuPDF
-- LangChain
-- spaCy
+- Sentence Transformers
+- LangChain Text Splitters
+- PyMuPDF (fitz)
+- python-dotenv
 
 ## 📂 Project Structure
 
-Coming Soon...
+```
+InsightGPT/
+│
+├── app.py
+├── config.py
+├── requirements.txt
+├── .env
+├── prompts/
+├── uploads/
+├── chromadb/
+├── utils/
+└── README.md
+```
 
-## 🚀 Status
+## ⚙️ Installation
 
-Project Under Development
+```bash
+git clone <repository-url>
+
+cd InsightGPT
+
+pip install -r requirements.txt
+
+streamlit run app.py
+```
+
+## 📸 Features
+
+- Ask questions about uploaded documents
+- Generate AI summaries
+- Classify documents
+- Extract entities
+- Compare two documents
+- Perform semantic search
+
+## 👨‍💻 Author
+
+Sujal Gandhi
