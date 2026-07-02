@@ -1,6 +1,5 @@
 import os
 import streamlit as st
-from utils.summarizer import summarize_document
 
 from config import (
     PAGE_TITLE,
@@ -27,7 +26,21 @@ from utils.vector_store import (
     store_chunks
 )
 
-# PAGE CONFIG
+from utils.rag import (
+    generate_answer
+)
+
+from utils.summarizer import (
+    summarize_document
+)
+
+from utils.classifier import (
+    classify_document
+)
+
+# ==========================================================
+# PAGE CONFIGURATION
+# ==========================================================
 
 st.set_page_config(
     page_title=PAGE_TITLE,
@@ -35,7 +48,9 @@ st.set_page_config(
     layout=LAYOUT
 )
 
+# ==========================================================
 # SESSION STATE
+# ==========================================================
 
 if "document" not in st.session_state:
     st.session_state.document = None
@@ -43,10 +58,24 @@ if "document" not in st.session_state:
 if "chunks" not in st.session_state:
     st.session_state.chunks = []
 
-if "embeddings_created" not in st.session_state:
-    st.session_state.embeddings_created = False
+if "document_uploaded" not in st.session_state:
+    st.session_state.document_uploaded = False
 
+if "summary" not in st.session_state:
+    st.session_state.summary = ""
+
+if "classification_result" not in st.session_state:
+    st.session_state.classification_result = ""
+
+if "rag_answer" not in st.session_state:
+    st.session_state.rag_answer = ""
+
+if "rag_sources" not in st.session_state:
+    st.session_state.rag_sources = []
+
+# ==========================================================
 # SIDEBAR
+# ==========================================================
 
 with st.sidebar:
 
@@ -61,23 +90,31 @@ with st.sidebar:
 
     st.markdown("---")
 
-    st.subheader("🚀 AI Features")
+    st.subheader("🚀 AI Modules")
 
     st.markdown("""
-- 📄 Document Intelligence
-- 💬 RAG Question Answering
-- 📝 AI Summarization
-- 🔍 Semantic Search
-- 📊 Document Classification
-- 📑 Compare Documents
-- 🏢 Named Entity Recognition
+✅ RAG Question Answering
+
+✅ AI Summarization
+
+✅ Document Classification
+
+🚧 Named Entity Recognition
+
+🚧 Document Comparison
+
+🚧 Semantic Search
 """)
 
     st.markdown("---")
 
-    st.caption("Powered by Gemini + ChromaDB")
+    st.caption(
+        "Powered by Gemini 2.5 Flash + ChromaDB"
+    )
 
-# DOCUMENT PROCESSING PIPELINE
+# ==========================================================
+# DOCUMENT PROCESSING
+# ==========================================================
 
 if uploaded_pdf is not None:
 
@@ -88,11 +125,17 @@ if uploaded_pdf is not None:
             UPLOAD_FOLDER
         )
 
-        document = extract_document(file_path)
+        document = extract_document(
+            file_path
+        )
 
-        chunks = create_chunks(document)
+        chunks = create_chunks(
+            document
+        )
 
-        embeddings = generate_embeddings(chunks)
+        embeddings = generate_embeddings(
+            chunks
+        )
 
         store_chunks(
             chunks,
@@ -101,11 +144,15 @@ if uploaded_pdf is not None:
 
         st.session_state.document = document
         st.session_state.chunks = chunks
-        st.session_state.embeddings_created = True
+        st.session_state.document_uploaded = True
 
-    st.success("✅ Document Processed Successfully")
+    st.success(
+        "✅ Document indexed successfully!"
+    )
 
+# ==========================================================
 # MAIN DASHBOARD
+# ==========================================================
 
 st.title("🧠 InsightGPT")
 
@@ -115,9 +162,11 @@ st.caption(
 
 st.markdown("---")
 
-# DOCUMENT METADATA
+# ==========================================================
+# DOCUMENT STATISTICS
+# ==========================================================
 
-if st.session_state.document is not None:
+if st.session_state.document_uploaded:
 
     document = st.session_state.document
 
@@ -145,15 +194,21 @@ if st.session_state.document is not None:
         len(st.session_state.chunks)
     )
 
-    st.success("✅ Embeddings Generated")
+    st.success(
+        "✅ Embeddings generated successfully."
+    )
 
-    st.markdown("---")
+st.markdown("---")
 
-# AI MODULES
+# ==========================================================
+# TOP AI MODULES
+# ==========================================================
 
 left, right = st.columns([2, 1])
 
-# RAG CHAT
+# ==========================================================
+# RAG QUESTION ANSWERING
+# ==========================================================
 
 with left:
 
@@ -163,24 +218,67 @@ with left:
         "Ask anything about your document..."
     )
 
-    if st.button("🚀 Ask AI"):
+    if st.button(
+        "🚀 Ask AI",
+        use_container_width=True
+    ):
 
-        if st.session_state.document is None:
-            st.warning("Please upload a document first.")
+        if not st.session_state.document_uploaded:
 
-        else:
-            st.info(
-                "RAG Engine will be integrated in Milestone 5."
+            st.warning(
+                "Please upload a document first."
             )
 
+        elif question.strip() == "":
+
+            st.warning(
+                "Please enter a question."
+            )
+
+        else:
+
+            with st.spinner(
+                "Searching document..."
+            ):
+
+                result = generate_answer(
+                    question
+                )
+
+                st.session_state.rag_answer = result["answer"]
+                st.session_state.rag_sources = result["sources"]
+
+    if st.session_state.rag_answer:
+
+        st.success("Answer")
+
+        st.markdown(
+            st.session_state.rag_answer
+        )
+
+        pages = sorted(
+            list(
+                set(
+                    source["page"]
+                    for source in st.session_state.rag_sources
+                )
+            )
+        )
+
+        st.info(
+            "📚 Source Pages : "
+            + ", ".join(
+                map(str, pages)
+            )
+        )
+
+# ==========================================================
 # AI SUMMARY
+# ==========================================================
 
 with right:
 
     st.subheader("📝 AI Summary")
-
-    if "summary" not in st.session_state:
-        st.session_state.summary = ""
 
     if st.button(
         "Generate Summary",
@@ -205,9 +303,13 @@ with right:
 
     if st.session_state.summary:
 
-        st.success("✅ Summary Generated Successfully")
+        st.success(
+            "✅ Summary Generated Successfully"
+        )
 
-        st.markdown(st.session_state.summary)
+        st.markdown(
+            st.session_state.summary
+        )
 
         st.download_button(
             label="📥 Download Summary",
@@ -217,16 +319,28 @@ with right:
             use_container_width=True
         )
 
-# INSIGHTS
+st.markdown("---")
+
+# ==========================================================
+# AI MODULES
+# ==========================================================
+
 col1, col2 = st.columns(2)
+
+# ==========================================================
+# AI INSIGHTS (NER)
+# ==========================================================
 
 with col1:
 
     st.subheader("📊 AI Insights")
 
-    if st.button("Extract Insights"):
+    if st.button(
+        "Extract Insights",
+        use_container_width=True
+    ):
 
-        if st.session_state.document is None:
+        if not st.session_state.document_uploaded:
 
             st.warning(
                 "Please upload a document first."
@@ -235,16 +349,23 @@ with col1:
         else:
 
             st.info(
-                "NER module coming soon."
+                "Named Entity Recognition module will be added in the next feature."
             )
+
+# ==========================================================
+# DOCUMENT CLASSIFICATION
+# ==========================================================
 
 with col2:
 
-    st.subheader("📂 Classification")
+    st.subheader("📂 AI Document Classification")
 
-    if st.button("Classify Document"):
+    if st.button(
+        "Classify Document",
+        use_container_width=True
+    ):
 
-        if st.session_state.document is None:
+        if not st.session_state.document_uploaded:
 
             st.warning(
                 "Please upload a document first."
@@ -252,68 +373,119 @@ with col2:
 
         else:
 
-            st.info(
-                "Classification module coming soon."
-            )
+            with st.spinner(
+                "Analyzing document..."
+            ):
+
+                st.session_state.classification_result = classify_document(
+                    st.session_state.document
+                )
+
+    if st.session_state.classification_result:
+
+        st.success(
+            "✅ Classification Completed"
+        )
+
+        st.markdown(
+            st.session_state.classification_result
+        )
+
+        st.download_button(
+            label="📥 Download Classification",
+            data=st.session_state.classification_result,
+            file_name="InsightGPT_Classification.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
 
 st.markdown("---")
 
+# ==========================================================
 # DOCUMENT COMPARISON
+# ==========================================================
 
 st.subheader("📑 Compare Documents")
 
 compare_pdf = st.file_uploader(
-
     "Upload Second PDF",
-
     type=SUPPORTED_FILE_TYPES,
-
     key="compare_pdf"
-
 )
 
-if st.button("Compare Documents"):
+if st.button(
+    "Compare Documents",
+    use_container_width=True
+):
 
     if compare_pdf is None:
 
         st.warning(
-            "Please upload another document."
+            "Please upload a second document."
         )
 
     else:
 
         st.info(
-            "Comparison module will be added later."
+            "AI Document Comparison will be implemented in the next feature."
         )
 
 st.markdown("---")
 
-# DOCUMENT OVERVIEW
+# ==========================================================
+# DOCUMENT PREVIEW
+# ==========================================================
 
-if st.session_state.document is not None:
+if st.session_state.document_uploaded:
 
     st.subheader("📖 Document Preview")
 
     preview_text = ""
 
-    for page in st.session_state.document["pages"][:3]:
+    for page in st.session_state.document["pages"]:
 
         preview_text += page["text"] + "\n\n"
 
+        if len(preview_text) >= 5000:
+            break
+
     st.text_area(
-
-        "Preview",
-
+        "Extracted Text",
         preview_text[:5000],
-
         height=350
-
     )
 
-# FOOTER
+    with st.expander("📋 Chunk Information"):
+
+        st.metric(
+            "Total Chunks",
+            len(st.session_state.chunks)
+        )
+
+        if len(st.session_state.chunks) > 0:
+
+            first_chunk = st.session_state.chunks[0]
+
+            st.markdown("### First Chunk")
+
+            st.code(
+                first_chunk["text"][:700]
+            )
+
+            st.markdown("### Metadata")
+
+            st.json({
+                "Chunk ID": first_chunk["chunk_id"],
+                "Page": first_chunk["page_number"],
+                "Document": first_chunk["document_name"]
+            })
 
 st.markdown("---")
 
+# ==========================================================
+# FOOTER
+# ==========================================================
+
 st.caption(
-    "InsightGPT • AI Powered Document Intelligence Platform"
+    "🧠 InsightGPT • Enterprise AI Document Intelligence Platform"
 )
